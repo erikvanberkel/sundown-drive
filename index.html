@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Sundown Drive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="cabinet">
+  <div id="screen">
+    <canvas id="game" width="480" height="270"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-block left">
+          <span class="label">SCORE</span><span id="score" class="val">0</span>
+        </div>
+        <div class="hud-block center">
+          <span class="label time-label">TIME</span><span id="time" class="val big">75</span>
+          <div id="course">
+            <div id="course-track"><div id="course-car"></div></div>
+            <div id="course-name">SUNSET BAY</div>
+          </div>
+        </div>
+        <div class="hud-block right">
+          <span class="label">LAP</span><span id="lap" class="val">0'00"00</span>
+          <span class="label stage-label">STAGE <span id="stage">1</span></span>
+        </div>
+      </div>
+      <div class="hud-bottom">
+        <div id="speedo">
+          <div id="tach"></div>
+          <div class="speed-read"><span id="speed">0</span><span class="unit">km/h</span></div>
+        </div>
+        <div id="boost">
+          <span class="label">BOOST</span>
+          <div id="boost-bar"><div id="boost-fill"></div></div>
+        </div>
+      </div>
+      <div id="banner"></div>
+      <div id="sub-banner"></div>
+    </div>
+
+    <div id="title" class="panel">
+      <div class="logo">
+        <span class="logo-top">SUNDOWN</span>
+        <span class="logo-bottom">DRIVE</span>
+      </div>
+      <div class="blink">PRESS ENTER</div>
+      <div class="hiscore">HI-SCORE <span id="hiscore">0</span></div>
+      <div class="help">
+        ARROWS / WASD &nbsp;DRIVE<br>
+        SPACE &nbsp;BOOST &nbsp;&nbsp; M &nbsp;MUSIC &nbsp;&nbsp; P &nbsp;PAUSE
+      </div>
+    </div>
+
+    <div id="radio" class="panel hidden">
+      <div class="radio-title">SELECT MUSIC</div>
+      <div id="radio-dial">
+        <div class="station" data-i="0"><span class="freq">88.6</span><span class="name">PALM SHADOW</span></div>
+        <div class="station" data-i="1"><span class="freq">94.2</span><span class="name">NIGHT FREEWAY</span></div>
+        <div class="station" data-i="2"><span class="freq">101.7</span><span class="name">CORAL ENGINE</span></div>
+      </div>
+      <div class="radio-hint">LEFT/RIGHT TUNE &nbsp;&nbsp; ENTER START</div>
+    </div>
+
+    <div id="result" class="panel hidden">
+      <div id="result-title">TIME UP</div>
+      <div id="result-lines"></div>
+      <div class="blink">PRESS ENTER</div>
+    </div>
+
+    <div id="pause" class="panel hidden"><div class="blink">PAUSED</div></div>
+
+    <div class="crt"></div>
+  </div>
+
+  <div id="touch" aria-hidden="true">
+    <div class="pad-left">
+      <button data-key="left">&#9664;</button>
+      <button data-key="right">&#9654;</button>
+    </div>
+    <div class="pad-right">
+      <button data-key="boost" class="small">BOOST</button>
+      <button data-key="down">BRAKE</button>
+      <button data-key="up">GAS</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/sound.js"></script>
+<script src="js/car.js"></script>
+<script src="js/traffic.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/track.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
