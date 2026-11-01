@@ -25,7 +25,7 @@
   const G = {
     mode: 'loading', track: null, sprites: null, position: 0, playerX: 0, speed: 0, steer: 0, braking: false,
     offroad: false, skid: 0, time: 0, score: 0, lap: 0, total: 0, stage: 0, boost: 0, boosting: 0, crash: 0,
-    crashSpin: 1, shake: 0, frame: 0, farOffset: 0, nearOffset: 0, particles: [], nearMisses: 0, crashes: 0,
+    crashSpin: 1, shake: 0, frame: 0, skyOffset: 0, farOffset: 0, nearOffset: 0, particles: [], nearMisses: 0, crashes: 0,
     leanAnim: 0, treadPhase: 0, hairPhase: 0, radio: 0, paused: false, hiscore: 0, countdown: 0, endTimer: 0, bannerTimer: 0, subTimer: 0, lastWarn: 0,
   };
 
@@ -104,7 +104,7 @@
   function resetPlayer() {
     G.track = Track.build(G.sprites);
     G.position = 0; G.playerX = 0; G.speed = 0; G.crash = 0; G.boosting = 0; G.particles.length = 0;
-    G.farOffset = 0; G.nearOffset = 0; G.shake = 0;
+    G.skyOffset = G.farOffset = G.nearOffset = 0; G.shake = 0;
     G.track.cars.forEach(c => { c.prevRel = Infinity; });
   }
 
@@ -335,10 +335,11 @@
       car.prevRel = rel;
     }
 
-    // Parallax
-    const moved = (G.position - startPos) / SEG;
-    G.farOffset += 0.0012 * pSeg.curve * moved;
-    G.nearOffset += 0.0026 * pSeg.curve * moved;
+    // Parallax (pixels): the sky drifts slowest, near scenery fastest as the road bends
+    const turn = pSeg.curve * (G.position - startPos) / SEG;
+    G.skyOffset += 0.5 * turn;
+    G.farOffset += 1.15 * turn;
+    G.nearOffset += 2.5 * turn;
 
     // Tyre smoke, dust and skid
     const sp2 = G.speed / P.maxSpeed;
@@ -362,7 +363,7 @@
     // Mode logic
     if (G.mode === 'title' || G.mode === 'radio') {
       if (G.position > T.stageStarts[1] * SEG - SEG * 400) {
-        G.position = 0; G.playerX = 0; G.farOffset = G.nearOffset = 0; scatterCars(0);
+        G.position = 0; G.playerX = 0; G.skyOffset = G.farOffset = G.nearOffset = 0; scatterCars(0);
       }
     } else if (G.mode === 'countdown') {
       G.countdown -= dt;
@@ -450,7 +451,8 @@
 
   Art.ready().then(S => {
     G.sprites = S;
-    const backgrounds = Track.THEMES.map((th, i) => Art.background(th.bg, W, H, 100 + i));
+    // Ground under the far scenery matches the fully fogged grass at the horizon, so crests never show sky
+    const backgrounds = Track.THEMES.map((th, i) => Art.background(th.bg, W, H, 100 + i, Track.mix(th.grass[1], th.fog, 0.9)));
     Render.init($('game'), backgrounds);
     toTitle();
     requestAnimationFrame(loop);

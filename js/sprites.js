@@ -219,48 +219,56 @@ const Art = (() => {
   }
 
   // ---------------- Backgrounds ----------------
-  // Returns { sky, far, near } canvases sized for a W x H view; far/near are 2W wide and tile.
-  function background(bg, W, H, seed) {
-    const r = rng(seed);
-    const horizon = Math.round(H / 2);
-    const [sky, sg] = canvas(W, H);
-    const bands = 24, stops = bg.sky;
-    for (let i = 0; i < bands; i++) {
-      const t = i / (bands - 1);
-      sg.fillStyle = lerpStops(stops, t);
-      sg.fillRect(0, Math.floor(i * (horizon + 20) / bands), W, Math.ceil((horizon + 20) / bands) + 1);
-    }
-    sg.fillStyle = stops[stops.length - 1]; sg.fillRect(0, horizon + 18, W, H);
-    if (bg.stars) for (let i = 0; i < 90; i++) {
-      sg.fillStyle = r() > 0.8 ? '#ffd6ff' : '#ffffff';
-      sg.globalAlpha = 0.3 + r() * 0.7; sg.fillRect(r() * W | 0, r() * horizon * 0.8 | 0, 1, 1);
-    }
-    sg.globalAlpha = 1;
-    if (bg.sun) {
-      const s = bg.sun, sx = W * s.x, sy = horizon - s.y;
-      const gr = sg.createLinearGradient(0, sy - s.r, 0, sy + s.r);
-      gr.addColorStop(0, s.c1); gr.addColorStop(1, s.c2);
-      sg.save(); sg.beginPath(); sg.arc(sx, sy, s.r, 0, Math.PI * 2); sg.clip();
-      sg.fillStyle = gr; sg.fillRect(sx - s.r, sy - s.r, s.r * 2, s.r * 2);
-      if (s.stripes) for (let k = 0; k < 7; k++) {
-        const yy = Math.round(sy - s.r * 0.12 + k * (s.r * 0.16)); sg.clearRect(sx - s.r, yy, s.r * 2, Math.round(1 + k * 0.6));
-      }
-      sg.restore();
-      if (s.stripes) { // repaint sky through the stripe gaps
-        sg.globalCompositeOperation = 'destination-over';
-        for (let i = 0; i < bands; i++) { sg.fillStyle = lerpStops(stops, i / (bands - 1)); sg.fillRect(0, Math.floor(i * (horizon + 20) / bands), W, Math.ceil((horizon + 20) / bands) + 1); }
-        sg.globalCompositeOperation = 'source-over';
-      }
-    }
-    if (bg.clouds) for (let i = 0; i < 7; i++) {
-      const cx = r() * W, cy = 18 + r() * (horizon - 60), cw = 30 + r() * 60;
-      sg.fillStyle = bg.clouds;
-      sg.fillRect(cx, cy, cw, 3); sg.fillRect(cx + 6, cy - 2, cw * 0.6, 2); sg.fillRect(cx - 8, cy + 3, cw * 0.7, 2);
-    }
+  // Builds one theme's backdrop as wrap-around panoramas PW = 3W wide that scroll with the road's curves:
+  // stars, clouds, a sun sprite with glow, and far/near scenery. The sky gradient itself is painted live by
+  // the renderer so it can blend smoothly between themes.
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
 
-    const far = layer(bg.far, W * 2, H, horizon, r);
-    const near = layer(bg.near, W * 2, H, horizon, r);
-    return { sky, far, near };
+  function background(bg, W, H, seed, ground) {
+    const r = rng(seed), PW = W * 3, horizon = Math.round(H / 2);
+    const out = { PW, stops: bg.sky, stars: null, clouds: null, sun: null };
+    if (bg.stars) {
+      const [c, g] = canvas(PW, horizon);
+      for (let i = 0; i < 300; i++) {
+        g.fillStyle = r() > 0.8 ? '#ffd6ff' : r() > 0.5 ? '#cfe8ff' : '#ffffff';
+        g.globalAlpha = 0.25 + r() * 0.75;
+        const x = r() * PW | 0, y = Math.pow(r(), 1.4) * horizon * 0.85 | 0;
+        g.fillRect(x, y, 1, 1);
+        if (r() > 0.95) { g.fillRect(x - 1, y, 3, 1); g.fillRect(x, y - 1, 1, 3); }
+      }
+      out.stars = c;
+    }
+    if (bg.clouds) {
+      const [c, g] = canvas(PW, horizon);
+      g.fillStyle = bg.clouds;
+      for (let i = 0; i < 20; i++) {
+        const cx = r() * PW, cy = 12 + r() * (horizon - 46), cw = 30 + r() * 70;
+        for (const x of [cx, cx - PW]) {
+          g.fillRect(x, cy, cw, 3); g.fillRect(x + 6, cy - 2, cw * 0.6, 2);
+          g.fillRect(x - 8, cy + 3, cw * 0.7, 2); g.fillRect(x + cw * 0.3, cy - 4, cw * 0.3, 2);
+        }
+      }
+      out.clouds = c;
+    }
+    if (bg.sun) {
+      const s = bg.sun, d = s.r * 2 + 2;
+      const [c, g] = canvas(d, d);
+      const gr = g.createLinearGradient(0, 1, 0, d - 1);
+      gr.addColorStop(0, s.c1); gr.addColorStop(1, s.c2);
+      g.fillStyle = gr; g.beginPath(); g.arc(d / 2, d / 2, s.r, 0, Math.PI * 2); g.fill();
+      if (s.stripes) for (let k = 0; k < 7; k++) {
+        g.clearRect(0, Math.round(d / 2 - s.r * 0.12 + k * s.r * 0.16), d, Math.round(1 + k * 0.6));
+      }
+      const gd = Math.round(s.r * 5);
+      const [gc, gg] = canvas(gd, gd);
+      const rg = gg.createRadialGradient(gd / 2, gd / 2, s.r * 0.5, gd / 2, gd / 2, gd / 2);
+      rg.addColorStop(0, rgba(s.c2, 0.45)); rg.addColorStop(0.45, rgba(s.c2, 0.14)); rg.addColorStop(1, rgba(s.c2, 0));
+      gg.fillStyle = rg; gg.fillRect(0, 0, gd, gd);
+      out.sun = { canvas: c, glow: gc, x: s.x * W, y: horizon - s.y, r: s.r };
+    }
+    out.far = layer(bg.far, PW, H, horizon, r, ground);
+    out.near = layer(bg.near, PW, H, horizon, r, null);
+    return out;
   }
 
   function lerpStops(stops, t) {
@@ -282,23 +290,24 @@ const Art = (() => {
     return pts;
   }
 
-  function layer(spec, W, H, horizon, r) {
+  function layer(spec, W, H, horizon, r, ground) {
     const [c, g] = canvas(W, H);
     if (!spec) return c;
     const base = horizon + (spec.base || 0);
     if (spec.sea) {
-      g.fillStyle = spec.sea; g.fillRect(0, base - 2, W, H - base + 2);
+      g.fillStyle = spec.sea; g.fillRect(0, base - 2, W, 20);
       for (let i = 0; i < 120; i++) { g.fillStyle = spec.glint; g.fillRect(r() * W | 0, base + (r() * 14 | 0), 2 + r() * 6 | 0, 1); }
     }
     if (spec.type === 'mountains' || spec.type === 'mesa' || spec.type === 'hills') {
-      const n = 64, pts = ridge(W, r, spec.rough || 0.55, n);
-      g.fillStyle = spec.color; g.beginPath(); g.moveTo(0, H);
+      const n = 96, pts = ridge(W, r, spec.rough || 0.55, n);
+      const foot = spec.sea || spec.shore ? base - 1 : H; // keep the sea visible below coastal hills
+      g.fillStyle = spec.color; g.beginPath(); g.moveTo(0, foot);
       for (let i = 0; i <= n; i++) {
         let v = pts[i];
         if (spec.type === 'mesa') v = Math.round(v * 3) / 3;
         g.lineTo(i * W / n, base - spec.height * (0.2 + v * 0.8));
       }
-      g.lineTo(W, H); g.closePath(); g.fill();
+      g.lineTo(W, foot); g.closePath(); g.fill();
       if (spec.cap) { // snow caps / rim light
         g.save(); g.clip();
         g.fillStyle = spec.cap;
@@ -335,7 +344,7 @@ const Art = (() => {
       }
       g.fillRect(0, base - 2, W, H);
     }
-    if (spec.ground) { g.fillStyle = spec.ground; g.fillRect(0, base, W, H - base); }
+    if (ground) { const gy = spec.sea ? base + 18 : base; g.fillStyle = ground; g.fillRect(0, gy, W, H - gy); }
     return c;
   }
 

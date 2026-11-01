@@ -1,6 +1,6 @@
 // Sundown Drive: stage themes and course construction.
 const Track = (() => {
-  const SEG = 200, RUMBLE = 3, ROAD_W = 2000, LANES = 3, TRANSITION = 160;
+  const SEG = 200, RUMBLE = 3, ROAD_W = 2000, LANES = 3, TRANSITION = 160, SKY_TRANSITION = 420;
   const STAGE_LEN = 2000;
   const CURVE = { NONE: 0, EASY: 2, MEDIUM: 4, HARD: 6 };
   const HILL = { NONE: 0, LOW: 20, MEDIUM: 40, HIGH: 60 };
@@ -12,23 +12,23 @@ const Track = (() => {
       road: ['#7a768c', '#6a6680'], grass: ['#f2d496', '#e2be7a'], rumble: ['#fff6e8', '#e8203a'], lane: '#fff6e8', edge: '#fff6e8',
       fog: '#ff9e7a', fogDensity: 3,
       bg: {
-        sky: ['#1c0538', '#5a1670', '#c2246e', '#ff5a6e', '#ffb35a'],
-        sun: { x: 0.5, y: 50, r: 44, c1: '#ffe96b', c2: '#ff2f7a', stripes: true },
-        clouds: 'rgba(255,170,210,0.55)',
-        far: { type: 'mountains', color: '#5b2470', line: '#ff7ab0', height: 34, base: -2, sea: '#2f3fa8', glint: '#ffc9a0' },
-        near: { type: 'hills', color: '#3a1452', height: 12, base: 0, rough: 0.6 },
+        sky: ['#24073f', '#4a1170', '#8e1f7a', '#d4306e', '#ff5f5a', '#ff9a4a', '#ffd070'],
+        sun: { x: 0.5, y: 52, r: 44, c1: '#ffe96b', c2: '#ff2f7a', stripes: true },
+        clouds: 'rgba(255,170,210,0.6)',
+        far: { type: 'mountains', color: '#4a1f66', line: '#ff7ab0', height: 46, base: -2, sea: '#3a3fa0', glint: '#ffd0a0' },
+        near: { type: 'hills', color: '#2e0f45', height: 18, base: -1, rough: 0.6, shore: true },
       },
     },
     {
       name: 'DESERT RIDGE', time: 48,
       road: ['#827068', '#72605a'], grass: ['#e8aa62', '#d4924e'], rumble: ['#fff6e8', '#2a1a14'], lane: '#fff6e8', edge: '#fff6e8',
-      fog: '#ffb07a', fogDensity: 4,
+      fog: '#f0d2a0', fogDensity: 4,
       bg: {
-        sky: ['#2b1460', '#7a2c80', '#d4586e', '#ff9a5e', '#ffd48a'],
-        sun: { x: 0.72, y: 60, r: 22, c1: '#fffbe0', c2: '#ffcf5a' },
-        clouds: 'rgba(255,220,200,0.45)',
-        far: { type: 'mesa', color: '#a8463a', line: '#ff9a6a', height: 46, base: 0, rough: 0.5 },
-        near: { type: 'mesa', color: '#7a2e2a', height: 20, base: 2, rough: 0.7 },
+        sky: ['#0e2f7a', '#1f55a8', '#3d82cc', '#73b0e0', '#b6d8ea', '#ecdfb4', '#ffd08a'],
+        sun: { x: 0.72, y: 96, r: 15, c1: '#ffffff', c2: '#fff0a8' },
+        clouds: 'rgba(255,255,255,0.75)',
+        far: { type: 'mesa', color: '#b4553c', line: '#ffb38a', height: 58, base: 0, rough: 0.5 },
+        near: { type: 'mesa', color: '#8a3a2c', height: 24, base: 2, rough: 0.7 },
       },
     },
     {
@@ -36,11 +36,11 @@ const Track = (() => {
       road: ['#2e2c46', '#232136'], grass: ['#1c0e36', '#140828'], rumble: ['#3ef2ff', '#ff3ea5'], lane: '#ffe23b', edge: '#fff6e8',
       fog: '#3a0f5c', fogDensity: 5, night: true,
       bg: {
-        sky: ['#03010c', '#100533', '#3a0b5c', '#a0157a', '#ff3ea5'],
-        sun: { x: 0.25, y: 92, r: 12, c1: '#fff6e8', c2: '#c9b8ff' },
+        sky: ['#010008', '#06021c', '#120634', '#2a0a52', '#5a0e6e', '#b0177e', '#ff3ea5'],
+        sun: { x: 0.25, y: 96, r: 12, c1: '#fff6e8', c2: '#b8a8ff' },
         stars: true,
-        far: { type: 'city', color: '#1a0d3a', lit: '#ffd86b', lit2: '#3ef2ff', neon: '#ff3ea5', height: 70, base: 0 },
-        near: { type: 'city', color: '#0e0624', lit: '#ff8a1f', lit2: '#ff3ea5', neon: '#3ef2ff', height: 40, base: 4 },
+        far: { type: 'city', color: '#1a0d3a', lit: '#ffd86b', lit2: '#3ef2ff', neon: '#ff3ea5', height: 82, base: 0 },
+        near: { type: 'city', color: '#0e0624', lit: '#ff8a1f', lit2: '#ff3ea5', neon: '#3ef2ff', height: 46, base: 4 },
       },
     },
     {
@@ -48,11 +48,11 @@ const Track = (() => {
       road: ['#646878', '#555968'], grass: ['#348049', '#286a3a'], rumble: ['#fff6e8', '#d81b2a'], lane: '#fff6e8', edge: '#fff6e8',
       fog: '#9fb6d8', fogDensity: 4,
       bg: {
-        sky: ['#0d1b3a', '#28467a', '#6a7fb8', '#e8a0b0', '#ffd0a0'],
-        sun: { x: 0.35, y: 70, r: 18, c1: '#fff8e0', c2: '#ffd2a0' },
-        clouds: 'rgba(240,230,255,0.6)',
-        far: { type: 'mountains', color: '#4a5a8a', cap: '#eef4ff', height: 80, base: 0, rough: 0.58 },
-        near: { type: 'trees', color: '#173a2c', height: 16, base: 2 },
+        sky: ['#0a1430', '#18306a', '#3a5ea0', '#7d9fd0', '#c7c4e0', '#f6c3c0', '#ffd9a8'],
+        sun: { x: 0.35, y: 40, r: 20, c1: '#fffbe8', c2: '#ffc890' },
+        clouds: 'rgba(245,235,255,0.7)',
+        far: { type: 'mountains', color: '#4a5a8a', cap: '#eef4ff', height: 90, base: 0, rough: 0.58 },
+        near: { type: 'trees', color: '#173a2c', height: 20, base: 2 },
       },
     },
     {
@@ -60,11 +60,11 @@ const Track = (() => {
       road: ['#2a2150', '#241c46'], grass: ['#0b0420', '#0b0420'], grid: '#ff3ea5', rumble: ['#3ef2ff', '#3ef2ff'], lane: '#ff3ea5', edge: '#3ef2ff',
       fog: '#2a0650', fogDensity: 5, night: true,
       bg: {
-        sky: ['#000008', '#0a0430', '#2a0a60', '#7a1a8a', '#ff4f8a'],
+        sky: ['#000004', '#03011a', '#0e0440', '#260a66', '#561085', '#a3198a', '#ff4f8a'],
         sun: { x: 0.5, y: 46, r: 54, c1: '#ffe23b', c2: '#ff2f8a', stripes: true },
         stars: true,
-        far: { type: 'mountains', color: '#12062e', line: '#3ef2ff', height: 50, base: 0, rough: 0.5 },
-        near: { type: 'hills', color: '#0b0420', line: '#ff3ea5', height: 14, base: 2, rough: 0.6 },
+        far: { type: 'mountains', color: '#12062e', line: '#3ef2ff', height: 60, base: 0, rough: 0.5 },
+        near: { type: 'hills', color: '#0b0420', line: '#ff3ea5', height: 18, base: 2, rough: 0.6 },
       },
     },
   ];
@@ -240,5 +240,5 @@ const Track = (() => {
     return { segments, cars, stageStarts, length, goal: goalIndex() * SEG };
   }
 
-  return { build, segAt, THEMES, SEG, RUMBLE, ROAD_W, LANES, TRANSITION, mix, get cars() { return cars; }, get segments() { return segments; } };
+  return { build, segAt, THEMES, SEG, RUMBLE, ROAD_W, LANES, TRANSITION, SKY_TRANSITION, mix, get cars() { return cars; }, get segments() { return segments; } };
 })();

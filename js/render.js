@@ -53,22 +53,76 @@ const Render = (() => {
     }
   }
 
-  function layer(img, rotation, offsetY, alpha) {
-    const iw = img.width, sx = ((Math.floor(rotation * iw) % iw) + iw) % iw;
+  // ---------------- Sky & backdrop ----------------
+  // Wrap-around panorama strip, scrolled horizontally by `offset` pixels.
+  function pano(img, offset, y, alpha) {
+    if (!img || alpha <= 0.01) return;
+    const iw = img.width, ih = img.height, sx = ((Math.floor(offset) % iw) + iw) % iw;
     const first = Math.min(W, iw - sx);
     ctx.globalAlpha = alpha;
-    ctx.drawImage(img, sx, 0, first, H, 0, offsetY, first, H);
-    if (first < W) ctx.drawImage(img, 0, 0, W - first, H, first, offsetY, W - first, H);
+    ctx.drawImage(img, sx, 0, first, ih, 0, y, first, ih);
+    if (first < W) ctx.drawImage(img, 0, 0, W - first, ih, first, y, W - first, ih);
     ctx.globalAlpha = 1;
   }
 
-  function backgroundSet(set, G, playerY, alpha) {
+  function hexRGB(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+  function stopAt(stops, t) {
+    const n = stops.length - 1, i = Math.min(n - 1, Math.floor(t * n)), f = t * n - i;
+    const a = hexRGB(stops[i]), b = hexRGB(stops[i + 1]);
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  }
+
+  // Sky gradient for theme A blended toward B by t, at 15-bit colour depth like the old arcade boards.
+  let skyCol = null, skyKey = '';
+  function skyGradient(ia, ib, t) {
+    const key = ia + ':' + ib + ':' + Math.round(t * 120);
+    if (key !== skyKey) {
+      skyKey = key;
+      if (!skyCol) { skyCol = document.createElement('canvas'); skyCol.width = 1; skyCol.height = H; }
+      const g = skyCol.getContext('2d'), img = g.createImageData(1, H), d = img.data;
+      const A = bgs[ia].stops, B = bgs[ib].stops, horizon = H / 2 + 2;
+      for (let y = 0; y < H; y++) {
+        const ty = Math.min(1, y / horizon), a = stopAt(A, ty), b = stopAt(B, ty);
+        for (let c = 0; c < 3; c++) d[y * 4 + c] = Math.min(255, Math.round((a[c] + (b[c] - a[c]) * t) / 8) * 8);
+        d[y * 4 + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+    }
+    ctx.drawImage(skyCol, 0, 0, 1, H, 0, 0, W, H);
+  }
+
+  function sun(set, offset, alpha) {
+    const s = set.sun;
+    if (!s || alpha <= 0.01) return;
+    let x = ((s.x - offset) % set.PW + set.PW) % set.PW;
+    if (x > W + s.glow.width / 2) x -= set.PW;
+    if (x < -s.glow.width / 2) return;
     ctx.globalAlpha = alpha;
-    ctx.drawImage(set.sky, 0, 0);
-    const clamp = v => Math.max(-22, Math.min(22, v));
-    layer(set.far, G.farOffset, clamp(playerY * 0.0012), alpha);
-    layer(set.near, G.nearOffset, clamp(playerY * 0.0022), alpha);
+    ctx.drawImage(s.glow, Math.round(x - s.glow.width / 2), Math.round(s.y - s.glow.height / 2));
+    ctx.drawImage(s.canvas, Math.round(x - s.canvas.width / 2), Math.round(s.y - s.canvas.height / 2));
     ctx.globalAlpha = 1;
+  }
+
+  // Sky decor, far to near: stars, sun, clouds. Each layer scrolls at its own rate through curves.
+  function skyDecor(set, G, alpha) {
+    pano(set.stars, G.skyOffset * 0.5, 0, alpha);
+    sun(set, G.skyOffset, alpha);
+    pano(set.clouds, G.skyOffset * 1.3, 0, alpha);
+  }
+
+  function hills(set, G, playerY, alpha) {
+    const clamp = v => Math.max(-22, Math.min(22, v));
+    pano(set.far, G.farOffset, clamp(playerY * 0.0012), alpha);
+    pano(set.near, G.nearOffset, clamp(playerY * 0.0022), alpha);
+  }
+
+  function horizonHaze(color) {
+    const h = H / 2, [r, g, b] = hexRGB(color);
+    const gr = ctx.createLinearGradient(0, h - 16, 0, h + 10);
+    gr.addColorStop(0, `rgba(${r},${g},${b},0)`);
+    gr.addColorStop(0.6, `rgba(${r},${g},${b},0.38)`);
+    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = gr; ctx.fillRect(0, h - 16, W, 26);
   }
 
   function sprite(s, scale, x, y, clipY, offX) {
@@ -100,11 +154,16 @@ const Render = (() => {
     ctx.save();
     ctx.translate(shakeX | 0, shakeY | 0);
 
-    // Background (cross-fade between stage themes)
+    // Backdrop: the sky gradient and scenery blend from the previous stage's look over SKY_TRANSITION segments
     const s = pSeg.stage, into = pSeg.index - T.stageStarts[s];
-    const t = s === 0 ? 1 : Math.min(1, into / Track.TRANSITION);
-    if (t < 1) backgroundSet(bgs[s - 1], G, playerY, 1);
-    backgroundSet(bgs[s], G, playerY, t < 1 ? t : 1);
+    const t = s === 0 ? 1 : Math.min(1, into / Track.SKY_TRANSITION);
+    const prev = Math.max(0, s - 1);
+    skyGradient(prev, s, t);
+    if (t < 1) skyDecor(bgs[prev], G, 1 - t);
+    skyDecor(bgs[s], G, t);
+    if (t < 1) hills(bgs[prev], G, playerY, 1 - t);
+    hills(bgs[s], G, playerY, t);
+    horizonHaze(pSeg.color.fog);
 
     // Road
     let maxy = H, x = 0, dx = -(base.curve * basePct);
