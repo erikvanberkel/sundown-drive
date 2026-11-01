@@ -159,6 +159,16 @@ const Render = (() => {
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  // 0 = day, 1 = night, blended across the theme transition at the start of a stage
+  function nightAmount(G, P) {
+    const seg = Track.segAt(G.position + P.playerZ), s = seg.stage;
+    const cur = Track.THEMES[s].night ? 1 : 0;
+    if (s === 0) return cur;
+    const prev = Track.THEMES[s - 1].night ? 1 : 0;
+    const t = Math.min(1, (seg.index - G.track.stageStarts[s]) / Track.TRANSITION);
+    return prev + (cur - prev) * t;
+  }
+
   function drawPlayer(G, P) {
     const S = G.sprites;
     const speedPct = G.speed / P.maxSpeed;
@@ -192,8 +202,22 @@ const Render = (() => {
     ctx.drawImage(hair, x, y);
 
     ctx.globalCompositeOperation = 'lighter';
-    if (G.braking) {
-      for (const lx of [27, 101]) glow(ox + lx, oy + 35, 30, 'rgba(255,40,70,0.55)');
+    // Tail lights: running-light glow at night (fading in through the stage transition), brighter when braking
+    const night = nightAmount(G, P), brk = G.braking ? 1 : 0;
+    const lamp = Math.max(brk * 0.55, night * (0.6 + brk * 0.35));
+    if (lamp > 0.01) {
+      const a = v => Math.min(1, v).toFixed(3);
+      if (night > 0.01) { // red wash on the road around the car
+        ctx.save();
+        ctx.translate(W / 2, H - 5);
+        ctx.scale(1, 0.2);
+        glow(0, 0, 110, `rgba(255,30,60,${a(night * (0.45 + brk * 0.3))})`);
+        ctx.restore();
+      }
+      for (const lx of [27, 101]) {
+        glow(ox + lx, oy + 35, 15, `rgba(255,70,90,${a(lamp)})`);                         // hot lens
+        glow(ox + lx, oy + 35, brk ? 56 : 46, `rgba(255,30,60,${a(lamp * 0.6)})`);        // halo
+      }
     }
     if (G.boosting > 0) {
       const r = Art.rng(G.frame * 13 + 1);
