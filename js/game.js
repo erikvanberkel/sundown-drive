@@ -33,6 +33,14 @@
 
   try { G.hiscore =parseInt(localStorage.getItem('sundown-drive-hiscore') || '0', 10) || 0; } catch (e) { G.hiscore = 0; }
 
+  // CRT scanlines: off by default, remembered between visits
+  const crt = document.querySelector('.crt');
+  try { crt.classList.toggle('scanlines', localStorage.getItem('sundown-drive-scanlines') === '1'); } catch (e) { /* storage blocked */ }
+  function toggleScanlines() {
+    const on = crt.classList.toggle('scanlines');
+    try { localStorage.setItem('sundown-drive-scanlines', on ? '1' : '0'); } catch (e) { /* storage blocked */ }
+  }
+
   // ---------------- Input ----------------
   const keys = { left: false, right: false, up: false, down: false, boost: false };
   const NONE = { left: false, right: false, up: false, down: false, boost: false };
@@ -45,6 +53,7 @@
     if (e.repeat) return;
     if (e.code === 'Enter' || e.code === 'NumpadEnter') action();
     else if (e.code === 'KeyM') Sound.toggleMusic();
+    else if (e.code === 'KeyL') toggleScanlines();
     else if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
     else if (G.mode === 'radio' && (e.code === 'ArrowLeft' || e.code === 'KeyA')) tune(-1);
     else if (G.mode === 'radio' && (e.code === 'ArrowRight' || e.code === 'KeyD')) tune(1);

@@ -51,17 +51,20 @@ html, body {
   image-rendering: crisp-edges;
 }
 
-/* CRT: scanlines, slight vignette and glow */
+/* CRT: slight vignette, plus optional scanlines (toggled with L) */
 .crt {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 62%, rgba(0,0,0,0.55) 100%);
+  mix-blend-mode: multiply;
+}
+.crt.scanlines {
   background:
     repeating-linear-gradient(to bottom,
       rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 0.28cqw,
       rgba(0, 0, 0, 0.22) 0.28cqw, rgba(0, 0, 0, 0.22) 0.42cqw),
     radial-gradient(ellipse at center, rgba(0,0,0,0) 62%, rgba(0,0,0,0.55) 100%);
-  mix-blend-mode: multiply;
 }
 
 .hidden { display: none !important; }
