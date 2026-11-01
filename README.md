@@ -33,7 +33,7 @@ On touch screens, buttons appear for steering, gas, brake and boost.
 
 The boost meter fills slowly on its own and faster with close calls. Hold boost above about a third of top speed to burn it for extra acceleration and a higher top speed.
 
-Driving off the road slows you down. Hitting roadside scenery or ramming traffic at speed spins the car out; a lighter touch only costs you speed.
+Driving off the road slows you down. Hitting roadside scenery or ramming traffic at speed flips the car end over end; a lighter touch only costs you speed.
 
 ## Stages
 

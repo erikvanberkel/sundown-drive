@@ -242,7 +242,7 @@
   }
 
   function crash() {
-    G.crash = P.crashTime; G.crashSpin = Math.random() > 0.5 ? 1 : -1;
+    G.crash = P.crashTime; G.crashSpin = Math.random() > 0.5 ? 1 : -1; // side the car rolls toward as it flips
     G.speed *= 0.55; G.shake = 1; G.boosting = 0; G.crashes++;
     Sound.sfx.crash();
     for (let i = 0; i < 30; i++) puff(W / 2 + (Math.random() - 0.5) * 100, H - 30, i % 3 ? '#d8d0e0' : '#ff8a1f', 0.9, 3);

@@ -384,6 +384,7 @@ const Art = (() => {
     S.cars = Traffic.build();
     S.player = CarArt.build();
     S.hair = CarArt.buildHair();
+    S.tumble = CarArt.buildTumble();
     return S;
   }
 

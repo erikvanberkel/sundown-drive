@@ -244,19 +244,8 @@ const Render = (() => {
     if (G.speed > 100 && !G.crash) bounce = (G.frame % 4 < 2 ? 0 : 1) * (G.offroad ? 2 : speedPct > 0.5 ? 1 : 0);
     const x = Math.round(W / 2 - w / 2), y = H - h + 1 - bounce;
     const ox = x + img.ox - lean, oy = y + img.oy; // car-local origin, rear body shifted by yaw
-    ctx.fillStyle = 'rgba(8,0,16,0.42)';
-    ctx.beginPath(); ctx.ellipse(W / 2, H - 4, 68, 6, 0, 0, Math.PI * 2); ctx.fill();
-    if (G.crash > 0) {
-      const p = 1 - G.crash / P.crashTime;
-      const hop = Math.sin(p * Math.PI) * 40;
-      ctx.save();
-      ctx.translate(W / 2, y + h / 2 - hop);
-      ctx.rotate(G.crashSpin * p * Math.PI * 2);
-      ctx.drawImage(img.canvas, -w / 2, -h / 2, w, h);
-      ctx.drawImage(hair, -w / 2, -h / 2);
-      ctx.restore();
-      return;
-    }
+    if (G.crash > 0) { drawTumble(G, P, img, hair, y + h / 2); return; }
+    shadow(68, 6);
     ctx.drawImage(img.canvas, x, y, w, h);
     ctx.drawImage(hair, x, y);
 
@@ -289,6 +278,89 @@ const Render = (() => {
       }
     }
     ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function shadow(rx, ry) {
+    ctx.fillStyle = 'rgba(8,0,16,0.42)';
+    ctx.beginPath(); ctx.ellipse(W / 2, H - 4, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ---------------- Crash tumble ----------------
+  // The car flips nose-down end over end as a deck-high box: rear, underside, front (upside down) and top
+  // as it comes back round onto its wheels. The crew and windshield rows of the rear and front views stand
+  // up from the cockpit as their own planes, sized so they land exactly on the normal sprite at rest.
+  // Every plane is drawn one texture row at a time, projected through the pitch with mild perspective.
+  const TUMBLE_D = 420;  // camera distance to the rear face, in sprite px
+  const TUMBLE_FLIP = 0.82; // share of the crash spent flipping; the rest is the landing bounce
+  let tumbleRear = null, tumbleBuf = null;
+
+  function drawTumble(G, P, img, hair, cy) {
+    const T = G.sprites.tumble, cx = W / 2;
+    if (!tumbleRear) {
+      tumbleRear = document.createElement('canvas');
+      tumbleRear.width = img.w; tumbleRear.height = img.h;
+      tumbleBuf = document.createElement('canvas');
+      tumbleBuf.width = W; tumbleBuf.height = H;
+      tumbleBuf.getContext('2d').imageSmoothingEnabled = false;
+    }
+    const rg = tumbleRear.getContext('2d');
+    rg.clearRect(0, 0, img.w, img.h);
+    rg.drawImage(img.canvas, 0, 0); rg.drawImage(hair, 0, 0);
+
+    const p = 1 - G.crash / P.crashTime, q = Math.min(1, p / TUMBLE_FLIP);
+    const pitch = Math.PI * 2 * (1 - Math.pow(1 - q, 1.5)); // fast off the impact, easing into the landing
+    const cos = Math.cos(pitch), sin = Math.sin(pitch);
+    const hw = img.w / 2, hh = img.h / 2, hl = T.length / 2, deck = hh - T.deckRow;
+    // car-space (height y, depth z) -> [screen y, scale, rotated depth]
+    const proj = (y, z) => {
+      const yr = y * cos - z * sin, zr = y * sin + z * cos;
+      const s = TUMBLE_D / (TUMBLE_D + hl + zr);
+      return [cy - yr * s, s, zr];
+    };
+
+    // Planes: texture rows r0..r1 spread from car-space point a to b, outward normal n (y, z), width scale k.
+    // The crew planes sit deeper than the face they belong to, so k scales them up to match at rest.
+    const kR = (TUMBLE_D + hl + T.seatZ) / TUMBLE_D, kF = (TUMBLE_D + hl - T.screenZ) / TUMBLE_D;
+    const planes = [
+      { tex: tumbleRear, r0: T.deckRow, r1: img.h, a: [deck, -hl], b: [-hh, -hl], n: [0, -1], k: 1 },
+      { tex: tumbleRear, r0: 0, r1: T.deckRow, a: [hh * kR, T.seatZ], b: [deck * kR, T.seatZ], n: [0, -1], k: kR },
+      { tex: T.under, r0: 0, r1: T.length, a: [-hh, -hl], b: [-hh, hl], n: [-1, 0], k: 1 },
+      { tex: T.front, r0: T.deckRow, r1: img.h, a: [deck, hl], b: [-hh, hl], n: [0, 1], k: 1 },
+      { tex: T.front, r0: 0, r1: T.deckRow, a: [hh * kF, T.screenZ], b: [deck * kF, T.screenZ], n: [0, 1], k: kF },
+      { tex: T.top, r0: 0, r1: T.length, a: [deck, -hl], b: [deck, hl], n: [1, 0], k: 1 },
+    ].filter(f => f.n[0] * sin + f.n[1] * cos < -1e-6)
+      .map(f => ({ ...f, depth: proj((f.a[0] + f.b[0]) / 2, (f.a[1] + f.b[1]) / 2)[2] }))
+      .sort((m, n) => n.depth - m.depth);
+
+    // Pivot over the lowest visible edge so nothing sinks into the road, plus a hop while airborne
+    let low = -Infinity;
+    for (const f of planes) low = Math.max(low, proj(...f.a)[0], proj(...f.b)[0]);
+    const hop = q < 1 ? Math.sin(q * Math.PI) * 34 : Math.sin((p - TUMBLE_FLIP) / (1 - TUMBLE_FLIP) * Math.PI) * 5;
+    const lift = Math.max(0, low - (cy + hh)) + hop;
+    const sh = Math.max(0.45, 1 - lift / 200);
+    shadow(68 * sh, 6 * sh);
+
+    // Rows go into an upright buffer first: rotating each row on its own leaves anti-aliased seams between them
+    const bg = tumbleBuf.getContext('2d'), top = cy - lift;
+    bg.clearRect(0, 0, W, H);
+    for (const f of planes) {
+      const rows = f.r1 - f.r0, pts = [];
+      for (let v = 0; v <= rows; v++) {
+        const t = v / rows;
+        pts.push(proj(f.a[0] + (f.b[0] - f.a[0]) * t, f.a[1] + (f.b[1] - f.a[1]) * t));
+      }
+      for (let v = 0; v < rows; v++) {
+        const y0 = Math.round(pts[v][0] - lift), y1 = Math.round(pts[v + 1][0] - lift);
+        if (y0 === y1) continue;
+        const w = Math.round(hw * f.k * (pts[v][1] + pts[v + 1][1]));
+        bg.drawImage(f.tex, 0, f.r0 + v, f.tex.width, 1, Math.round(cx - w / 2), Math.min(y0, y1), w, Math.abs(y1 - y0));
+      }
+    }
+    ctx.save();
+    ctx.translate(cx, top);
+    ctx.rotate(G.crashSpin * 0.2 * Math.sin(q * Math.PI)); // a little roll so it doesn't look on rails
+    ctx.drawImage(tumbleBuf, -cx, -top);
+    ctx.restore();
   }
 
   function glow(x, y, r, color) {
